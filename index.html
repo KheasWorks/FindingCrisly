@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Finding Crisly</title>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Baloo 2', cursive;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 2;
+    }
+
+    #loading {
+      display: flex;
+      background-color: #000;
+      color: white;
+      font-size: 3em;
+    }
+
+    .dots::after {
+      content: '';
+      animation: dots 1.5s steps(3, end) infinite;
+    }
+
+    @keyframes dots {
+      0% { content: ''; }
+      33% { content: '.'; }
+      66% { content: '..'; }
+      100% { content: '...'; }
+    }
+
+    #main {
+      background: url("crisly.jpg") center/cover no-repeat;
+      display: none;
+      flex-direction: column;
+    }
+
+    #main h1 {
+      color: white;
+      font-size: 4em;
+      text-shadow: 2px 2px 5px black;
+      margin-bottom: 20px;
+    }
+
+    .button {
+      background: #ff6b6b;
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 1.5em;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      width: 250px;
+    }
+
+    #game {
+      background: #f0d9b5;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #maze {
+      display: grid;
+      grid-template-columns: repeat(10, 40px);
+      grid-template-rows: repeat(10, 40px);
+      gap: 2px;
+      background: #f0d9b5;
+      padding: 10px;
+      border: 5px solid #6b4f3b;
+      margin: 10px;
+    }
+
+    .cell {
+      width: 40px;
+      height: 40px;
+    }
+
+    .wall {
+      background: #6b4f3b;
+    }
+
+    .player {
+      background: red;
+      border-radius: 50%;
+    }
+
+    .goal {
+      background: limegreen;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      margin: 5px;
+    }
+
+    .ctrl-btn {
+      font-size: 1.5em;
+      padding: 10px 15px;
+    }
+
+    .win {
+      display: none;
+      font-size: 2em;
+      color: gold;
+      background: rgba(0,0,0,0.6);
+      padding: 20px;
+      border-radius: 10px;
+      position: absolute;
+      top: 40%;
+      z-index: 10;
+      text-align: center;
+    }
+
+    .win button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 1em;
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<audio id="bgm" src="09123.mp3" loop></audio>
+
+<div id="loading" class="screen">
+  Finding Crisly<span class="dots"></span>
+</div>
+
+<div id="main" class="screen">
+  <h1>Finding Crisly</h1>
+  <button class="button" onclick="startGame()">▶ Start Game</button>
+  <button class="button">🛠 Settings</button>
+  <button class="button">🎖 Achievements</button>
+  <button class="button">🛍 Shop</button>
+  <button class="button">🎮 More Games</button>
+  <button class="button">📜 Credits</button>
+  <button class="button">🚪 Exit</button>
+</div>
+
+<div id="game" class="screen">
+  <h2>Get to the Green Box!</h2>
+  <div id="maze"></div>
+  <div class="controls">
+    <div class="row">
+      <button class="ctrl-btn" onclick="move('up')">⬆️</button>
+    </div>
+    <div class="row">
+      <button class="ctrl-btn" onclick="move('left')">⬅️</button>
+      <button class="ctrl-btn" onclick="move('down')">⬇️</button>
+      <button class="ctrl-btn" onclick="move('right')">➡️</button>
+    </div>
+  </div>
+</div>
+
+<div id="win" class="win">
+  🎉 You found Crisly! 🎉<br />
+  <button onclick="retry()">🔄 Retry</button>
+</div>
+
+<script>
+  const originalMazeData = [
+    "##########",
+    "#        #",
+    "# ###### #",
+    "# #    # #",
+    "# # ## # #",
+    "#   #   G#",
+    "### ######",
+    "#        #",
+    "# ###### #",
+    "##########"
+  ];
+  let mazeData;
+  let playerX, playerY;
+  const maze = document.getElementById("maze");
+
+  function drawMaze() {
+    maze.innerHTML = "";
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        if (mazeData[y][x] === "#") cell.classList.add("wall");
+        if (x === playerX && y === playerY) cell.classList.add("player");
+        if (mazeData[y][x] === "G") cell.classList.add("goal");
+        maze.appendChild(cell);
+      }
+    }
+  }
+
+  function move(dir) {
+    let newX = playerX;
+    let newY = playerY;
+    if (dir === "up") newY--;
+    if (dir === "down") newY++;
+    if (dir === "left") newX--;
+    if (dir === "right") newX++;
+
+    if (
+      newX >= 0 && newX < 10 &&
+      newY >= 0 && newY < 10 &&
+      mazeData[newY][newX] !== "#"
+    ) {
+      playerX = newX;
+      playerY = newY;
+      drawMaze();
+      if (mazeData[playerY][playerX] === "G") {
+        document.getElementById("win").style.display = "block";
+      }
+    }
+  }
+
+  function retry() {
+    document.getElementById("win").style.display = "none";
+    resetMaze();
+    drawMaze();
+  }
+
+  function resetMaze() {
+    mazeData = originalMazeData.map(row => row.split(""));
+    playerX = 1;
+    playerY = 1;
+  }
+
+  function startGame() {
+    document.getElementById("main").style.display = "none";
+    document.getElementById("game").style.display = "flex";
+    resetMaze();
+    drawMaze();
+  }
+
+  setTimeout(() => {
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("main").style.display = "flex";
+}, 4000);
+
+document.querySelector('.button').addEventListener('click', () => {
+  const bgm = document.getElementById("bgm");
+  if (bgm.paused) bgm.play();
+});
+
+</script>
+
+</body>
+</html>
